@@ -1,5 +1,6 @@
 import curses
 import logging
+import os
 
 
 BROWSER_WIDTH = 30
@@ -25,7 +26,9 @@ TILES_BOLD = """
 class Game(object): # {{{
     def __init__(self): # {{{
         fmt = '%(levelname)s : %(asctime)s : %(message)s'
-        logging.basicConfig(filename="hunt.log", level=logging.DEBUG, format=fmt)
+        self.maps = os.listdir("mazes")
+        self.current = 0
+        logging.basicConfig(filename="hunt.log", level=logging.INFO, format=fmt)
         self.key = None
         self.game_over = False
         self.player_health = 100
@@ -34,8 +37,7 @@ class Game(object): # {{{
         curses.wrapper(self.mainloop)
     # }}}
     def mainloop(self, stdscr): # {{{
-        # self.read_map("maze25x25s15.txt")
-        self.read_map("hunt.txt")
+        self.read_map("mazes/%s" % self.maps[self.current])
         self.setup(stdscr)
         while not self.game_over:
             self.display(stdscr)
@@ -71,17 +73,17 @@ class Game(object): # {{{
         curses.init_pair(1, COLOUR_WALL, COLOUR_FLOOR)
         curses.init_pair(2, COLOUR_PLAYER, COLOUR_FLOOR)
         curses.init_pair(3, 240, 232)
-        curses.init_pair(4, COLOUR_PLAYER, 4)
-        curses.init_pair(5, COLOUR_PLAYER, 5)
-        curses.init_pair(6, COLOUR_PLAYER, 6)
+        curses.init_pair(4, 34, COLOUR_FLOOR)
         self.C_BACKGROUND =  curses.color_pair(1)
         self.C_PLAYER =  curses.color_pair(2)
         self.C_UI = curses.color_pair(3)
+        self.C_EXIT = curses.color_pair(4)
+        self.filelist = curses.newpad(len(self.maps), 28)
+        self.filelist.addstr("\n".join(self.maps))
 
         self.browser = stdscr.derwin(1,1,0,1)
         self.hud = stdscr.derwin(1,1,0,0)
         self.maze = stdscr.derwin(1,1,1,0)
-        # self.maze = curses.newpad(1,1,1,0)
         self.hints = stdscr.derwin(1,1,2,0)
 
         stdscr.bkgd(" ", self.C_BACKGROUND)
@@ -115,7 +117,8 @@ class Game(object): # {{{
         self.hints.clear()
 
         new_size = stdscr.getmaxyx()
-        if (self.screen_size[0] != stdscr.getmaxyx()[0]) or (self.screen_size[1] != stdscr.getmaxyx()[1]):
+        y, x = new_size
+        if (self.screen_size[0] != y) or (self.screen_size[1] != x):
             logging.debug("screen resized")
             self.resize(stdscr)
             self.screen_size = new_size
@@ -126,14 +129,18 @@ class Game(object): # {{{
             w.attroff(self.C_UI)
 
         self.hud.addstr(1, 1, "%s:%s | %s" % (self.x, self.y, self.key))
+        self.hud.addstr(2, 1, "%s: %s" % (self.current, self.maps[self.current]))
         self.maze.addstr(0, 0, self.render_map())
         self.maze.addstr(self.y, self.x, "☻", self.C_PLAYER)
+        self.maze.addstr(self.exit_y, self.exit_x, "★", self.C_EXIT)
 
         stdscr.refresh()
         self.browser.refresh()
         self.hud.refresh()
         self.maze.refresh()
         self.hints.refresh()
+        # self.filelist.refresh(0, 0, 1, stdscr.getmaxyx()[1]-30, 20, 40)
+        self.filelist.refresh(self.current, -3, 1, x-BROWSER_WIDTH+1, y-2, x)
     # }}}
     def input(self, stdscr): # {{{
         self.key = stdscr.getkey()
@@ -157,12 +164,14 @@ class Game(object): # {{{
         elif self.key == "d":
             if self.map[self.y][self.x+1] != "█": 
                 self.x += 1
-        elif self.key == "h":
-            y, x = self.frame.getmaxyx()
-            self.frame.resize(y, x-1)
-        elif self.key == "l":
-            y, x = self.frame.getmaxyx()
-            self.frame.resize(y, x+1)
+        elif self.key == "n":
+            self.current += 1
+            self.current %= len(self.maps)
+            self.read_map("mazes/%s" % self.maps[self.current])
+        elif self.key == "p":
+            self.current -= 1
+            self.current %= len(self.maps)
+            self.read_map("mazes/%s" % self.maps[self.current])
     # }}}
 
     def read_map(self, filename): # {{{
@@ -176,6 +185,10 @@ class Game(object): # {{{
                     if c == "S":
                         self.x = j
                         self.y = i
+                    if c == "E":
+                        self.exit_x = j
+                        self.exit_y = i
+
                     if c == "#":
                         row.append("█")
                     else:
