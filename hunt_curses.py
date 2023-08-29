@@ -22,11 +22,15 @@ TILES_BOLD = """
 ┗┷┛│
 """
 # }}}
+root = os.path.dirname(__file__)
+mazes_dir = "mazes"
+mazes_path = os.path.join(root, mazes_dir)
+print(mazes_path)
 
 class Game(object): # {{{
     def __init__(self): # {{{
         fmt = '%(levelname)s : %(asctime)s : %(message)s'
-        self.maps = os.listdir("mazes")
+        self.maps = os.listdir(mazes_path)
         self.current = 0
         logging.basicConfig(filename="hunt.log", level=logging.INFO, format=fmt)
         self.key = None
@@ -37,7 +41,7 @@ class Game(object): # {{{
         curses.wrapper(self.mainloop)
     # }}}
     def mainloop(self, stdscr): # {{{
-        self.read_map("mazes/%s" % self.maps[self.current])
+        self.read_map(os.path.join( mazes_path, self.maps[self.current] ))
         self.setup(stdscr)
         while not self.game_over:
             self.display(stdscr)
@@ -110,6 +114,7 @@ class Game(object): # {{{
 
     # }}}
     def display(self, stdscr): # {{{
+
         stdscr.clear()
         self.browser.clear()
         self.hud.clear()
@@ -119,7 +124,7 @@ class Game(object): # {{{
         new_size = stdscr.getmaxyx()
         y, x = new_size
         if (self.screen_size[0] != y) or (self.screen_size[1] != x):
-            logging.debug("screen resized")
+        #     logging.debug("screen resized")
             self.resize(stdscr)
             self.screen_size = new_size
 
@@ -139,8 +144,9 @@ class Game(object): # {{{
         self.hud.refresh()
         self.maze.refresh()
         self.hints.refresh()
-        # self.filelist.refresh(0, 0, 1, stdscr.getmaxyx()[1]-30, 20, 40)
-        self.filelist.refresh(self.current, -3, 1, x-BROWSER_WIDTH+1, y-2, x)
+        # self.filelist.refresh(self.current, -3, 1, x-BROWSER_WIDTH+1, y-2, x)
+        self.filelist.refresh(self.current, -3, 1, x+1-BROWSER_WIDTH, y-2, x-1)
+
     # }}}
     def input(self, stdscr): # {{{
         self.key = stdscr.getkey()
@@ -167,11 +173,11 @@ class Game(object): # {{{
         elif self.key == "n":
             self.current += 1
             self.current %= len(self.maps)
-            self.read_map("mazes/%s" % self.maps[self.current])
+            self.read_map(os.path.join( mazes_path, self.maps[self.current] ))
         elif self.key == "p":
             self.current -= 1
             self.current %= len(self.maps)
-            self.read_map("mazes/%s" % self.maps[self.current])
+            self.read_map(os.path.join( mazes_path, self.maps[self.current] ))
     # }}}
 
     def read_map(self, filename): # {{{
